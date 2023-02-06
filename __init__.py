@@ -1,7 +1,7 @@
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Tuple, TYPE_CHECKING
+from typing import Tuple
 
 import discord
 from discord import app_commands
@@ -18,9 +18,6 @@ class DeleteMessageButton(discord.ui.View):
 
     @discord.ui.button(label='Delete message', style=discord.ButtonStyle.red, emoji="🚮")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if TYPE_CHECKING:
-            # noinspection PyTypeHints,PyDunderSlots,PyUnresolvedReferences,PyTypeChecker
-            interaction.response: discord.InteractionResponse = interaction.response
         await interaction.response.defer()
         self.should_delete_message = True
         self.stop()
@@ -39,7 +36,7 @@ class BreadAssassin(ModuleCog):
         old_message: discord.Message,
         new_message: discord.Message,
         changed_at: datetime,
-    ):
+    ) -> None:
         edited = new_message is not None
 
         embeds = [
