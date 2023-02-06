@@ -1,0 +1,14 @@
+# The maximum ammount of time (in seconds) that can has passed for a message to be snipeable
+max_age = 30
+
+# Allow the original message author to delete the snipe of their message
+allow_snipe_deletion = true
+
+# If the bot should allow sniping message deletions
+allow_edit_sniping = true
+# If the bot should allow sniping message edits
+allow_deletion_sniping = true
+
+# How the bot should respond when sniping a message, possible options are:
+# "embed" & "webhook"
+snipe_response_type = "embed"
