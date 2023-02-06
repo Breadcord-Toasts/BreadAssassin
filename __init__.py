@@ -12,13 +12,17 @@ from breadcord.module import ModuleCog
 
 
 class DeleteMessageButton(discord.ui.View):
-    def __init__(self):
+    def __init__(self, sniped_user: discord.User | discord.Member):
         super().__init__()
+        self.sniped_user = sniped_user
         self.should_delete_message = False
 
     @discord.ui.button(label='Delete message', style=discord.ButtonStyle.red, emoji="🚮")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
+        if interaction.user != self.sniped_user:
+            return
+
         self.should_delete_message = True
         self.stop()
 
@@ -34,7 +38,7 @@ class BreadAssassin(ModuleCog):
     async def send_snipe_embed(
         interaction: discord.Interaction,
         old_message: discord.Message,
-        new_message: discord.Message,
+        new_message: discord.Message | None,
         changed_at: datetime,
     ) -> None:
         edited = new_message is not None
@@ -45,7 +49,7 @@ class BreadAssassin(ModuleCog):
         if edited:
             embeds.append(discord.Embed(title="New message content:", description=new_message.content))
 
-        button = DeleteMessageButton()
+        button = DeleteMessageButton(old_message.author)
         await interaction.response.send_message(
             f"Sniped message {'edit' if edited else 'deletion'} from <t:{int(time.mktime(changed_at.timetuple()))}:R>. "
             f"Message was sent by {old_message.author.mention}",
