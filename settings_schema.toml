@@ -10,5 +10,6 @@ allow_edit_sniping = true
 allow_deletion_sniping = true
 
 # How the bot should respond when sniping a message, possible options are:
-# "embed" & "webhook"
-snipe_response_type = "embed"
+# "embed" - can sacrifise 2 embed slots the original message could have had, but preserves essentially all other info
+# "webhook" - preserves essentially all the info of the original msg, but doesn't show the new version if it was edited
+snipe_response_type = "webhook"

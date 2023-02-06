@@ -17,7 +17,7 @@ class DeleteMessageButton(discord.ui.View):
         self.sniped_user = sniped_user
         self.should_delete_message = False
 
-    @discord.ui.button(label='Delete message', style=discord.ButtonStyle.red, emoji="🚮")
+    @discord.ui.button(label="Delete this message (author only)", style=discord.ButtonStyle.red, emoji="🚮")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         if interaction.user != self.sniped_user:
@@ -49,17 +49,57 @@ class BreadAssassin(ModuleCog):
         if edited:
             embeds.append(discord.Embed(title="New message content:", description=new_message.content))
 
+        embeds.extend(old_message.embeds[: 10 - len(embeds)])
+
         button = DeleteMessageButton(old_message.author)
         await interaction.response.send_message(
             f"Sniped message {'edit' if edited else 'deletion'} from <t:{int(time.mktime(changed_at.timetuple()))}:R>. "
             f"Message was sent by {old_message.author.mention}",
+            files=[await attachment.to_file() for attachment in old_message.attachments],
             embeds=embeds,
-            view=button
+            view=button,
         )
         await button.wait()
         if button.should_delete_message:
             await interaction.delete_original_response()
 
+    async def send_snipe_webhook(
+        self,
+        interaction: discord.Interaction,
+        old_message: discord.Message,
+        new_message: discord.Message | None,
+        changed_at: datetime,
+    ) -> None:
+        try:
+            snipe_webhooks = await interaction.channel.webhooks()
+        except discord.Forbidden:
+            self.logger.warn(
+                f"Bot doesn't have permissions to manage webhooks in the "
+                f"{interaction.channel.name} channel within the {interaction.guild.name} guild."
+            )
+            return
+
+        snipe_webhooks = list(filter(lambda webhook: webhook.name == "Snipe", snipe_webhooks))
+        if not snipe_webhooks:
+            snipe_webhooks.extend([await interaction.channel.create_webhook(name="Snipe")])
+        snipe_webhook: discord.Webhook = snipe_webhooks[0]
+        await interaction.response.send_message("Sniped message.", ephemeral=True)
+
+        edited = new_message is not None
+        button = DeleteMessageButton(old_message.author)
+        sent_message = await snipe_webhook.send(
+            allowed_mentions=discord.AllowedMentions.none(),
+            avatar_url=old_message.author.avatar.url,
+            content=old_message.content,
+            embeds=old_message.embeds,
+            files=[await attachment.to_file() for attachment in old_message.attachments],
+            username=f"{old_message.author.display_name} (sniped {'edited' if edited else 'deleted'} message)",
+            view=button,
+            wait=True,
+        )
+        await button.wait()
+        if button.should_delete_message:
+            await sent_message.delete()
 
     async def send_snipe_response(
         self, interaction: discord.Interaction, *sniped_message_dict: Tuple[discord.Message, discord.Message, datetime]
@@ -68,6 +108,8 @@ class BreadAssassin(ModuleCog):
         match response_type:
             case "embed":
                 await self.send_snipe_embed(interaction, *sniped_message_dict)
+            case "webhook":
+                await self.send_snipe_webhook(interaction, *sniped_message_dict)
 
     async def is_allowed_to_snipe(self, attempted_to_snipe: dict) -> bool:
         if attempted_to_snipe["new_message"] is None and not self.module_settings.allow_deletion_sniping.value:
