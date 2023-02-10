@@ -1,7 +1,8 @@
 manifest_version = 1
 
 [module]
-name = "BreadAssassin"
+name = "Bread Assassin"
+id = "bread_assassin"
 description = "A breadcord snipe command."
 version = "1.0.0"
 license = "GNU GPLv3"

@@ -28,9 +28,9 @@ class DeleteMessageButton(discord.ui.View):
 
 
 class BreadAssassin(ModuleCog):
-    def __init__(self, name: str | None = None) -> None:
-        super().__init__(name)
-        self.module_settings = self.bot.settings.BreadAssassin
+    def __init__(self, module_id: str):
+        super().__init__(module_id)
+        self.module_settings = self.bot.settings.bread_assassin
         self.message_cache: defaultdict = defaultdict(dict)
         self.cache_cleanup.start()
 
@@ -121,7 +121,7 @@ class BreadAssassin(ModuleCog):
         time_tolerance = timedelta(seconds=self.module_settings.max_age.value)
         return attempted_to_snipe["changed_at"] + time_tolerance >= now
 
-    @app_commands.command()
+    @app_commands.command(description='"Snipe" a message that was recently edited or deleted')
     async def snipe(self, interaction: discord.Interaction):
         try:
             sniped_message_dict: dict = self.message_cache[interaction.guild_id][interaction.channel_id]
@@ -135,7 +135,7 @@ class BreadAssassin(ModuleCog):
 
     @ModuleCog.listener()
     async def on_message_delete(self, message: discord.Message):
-        if not self.module_settings.deletion_sniping.value:
+        if not self.module_settings.allow_deletion_sniping.value:
             return
         self.message_cache[message.guild.id][message.channel.id] = {
             "old_message": message,
@@ -145,7 +145,7 @@ class BreadAssassin(ModuleCog):
 
     @ModuleCog.listener()
     async def on_message_edit(self, old_message: discord.Message, new_message: discord.Message):
-        if not self.module_settings.edit_sniping.value:
+        if not self.module_settings.allow_edit_sniping.value:
             return
         self.message_cache[old_message.guild.id][old_message.channel.id] = {
             "old_message": old_message,
@@ -166,4 +166,4 @@ class BreadAssassin(ModuleCog):
 
 
 async def setup(bot: breadcord.Bot):
-    await bot.add_cog(BreadAssassin())
+    await bot.add_cog(BreadAssassin("bread_assassin"))
