@@ -77,6 +77,7 @@ class BreadAssassin(ModuleCog):
                 f"Bot doesn't have permissions to manage webhooks in the "
                 f"{interaction.channel.name} channel within the {interaction.guild.name} guild."
             )
+            await self.send_snipe_embed(interaction, old_message, new_message, changed_at)
             return
 
         snipe_webhooks = list(filter(lambda webhook: webhook.name == "Snipe", snipe_webhooks))
