@@ -30,7 +30,7 @@ class DeleteMessageButton(discord.ui.View):
 class BreadAssassin(ModuleCog):
     def __init__(self, module_id: str):
         super().__init__(module_id)
-        self.module_settings = self.bot.settings.bread_assassin
+        self.module_settings = self.bot.settings.get_child(module_id)
         self.message_cache: defaultdict = defaultdict(dict)
         self.cache_cleanup.start()
 
