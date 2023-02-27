@@ -43,18 +43,27 @@ class BreadAssassin(ModuleCog):
     ) -> None:
         edited = new_message is not None
 
+        content = (
+            f"Sniped message {'edit' if edited else 'deletion'} from <t:{int(time.mktime(changed_at.timetuple()))}:R>. "
+            f"Message was sent by {old_message.author.mention} "
+        )
+
         embeds = [
             discord.Embed(title=f"{'Old message' if edited else 'Message'} content:", description=old_message.content)
         ]
         if edited:
             embeds.append(discord.Embed(title="New message content:", description=new_message.content))
+        if old_message.reference and (reply := old_message.reference.cached_message):
+            content += f"in reply to {old_message.reference.cached_message.author.mention}"
+            embeds.append(discord.Embed(title="Replying to:", description=reply.content))
 
         embeds.extend(old_message.embeds[: 10 - len(embeds)])
 
         button = DeleteMessageButton(old_message.author)
+
+
         await interaction.response.send_message(
-            f"Sniped message {'edit' if edited else 'deletion'} from <t:{int(time.mktime(changed_at.timetuple()))}:R>. "
-            f"Message was sent by {old_message.author.mention}",
+            content,
             files=[await attachment.to_file() for attachment in old_message.attachments],
             embeds=embeds,
             view=button,
