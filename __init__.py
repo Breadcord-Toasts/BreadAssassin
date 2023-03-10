@@ -42,7 +42,6 @@ class BreadAssassin(ModuleCog):
         changed_at: datetime,
     ) -> None:
         edited = new_message is not None
-
         content = (
             f"Sniped message {'edit' if edited else 'deletion'} from <t:{int(time.mktime(changed_at.timetuple()))}:R>. "
             f"Message was sent by {old_message.author.mention} "
@@ -58,10 +57,7 @@ class BreadAssassin(ModuleCog):
             embeds.append(discord.Embed(title="Replying to:", description=reply.content))
 
         embeds.extend(old_message.embeds[: 10 - len(embeds)])
-
         button = DeleteMessageButton(old_message.author)
-
-
         await interaction.response.send_message(
             content,
             files=[await attachment.to_file() for attachment in old_message.attachments],
@@ -80,19 +76,19 @@ class BreadAssassin(ModuleCog):
         changed_at: datetime,
     ) -> None:
         try:
-            snipe_webhooks = await interaction.channel.webhooks()
+            snipe_webhook: discord.Webhook | None = discord.utils.find(
+                lambda w: w.name == "Snipe", await interaction.channel.webhooks()
+            )
         except discord.Forbidden:
             self.logger.warn(
                 f"Bot doesn't have permissions to manage webhooks in the "
                 f"{interaction.channel.name} channel within the {interaction.guild.name} guild."
             )
-            await self.send_snipe_embed(interaction, old_message, new_message, changed_at)
-            return
+            # Fallback to an embed
+            return await self.send_snipe_embed(interaction, old_message, new_message, changed_at)
 
-        snipe_webhooks = list(filter(lambda webhook: webhook.name == "Snipe", snipe_webhooks))
-        if not snipe_webhooks:
-            snipe_webhooks.extend([await interaction.channel.create_webhook(name="Snipe")])
-        snipe_webhook: discord.Webhook = snipe_webhooks[0]
+        if not snipe_webhook:
+            snipe_webhook = await interaction.channel.create_webhook(name="Snipe")
         await interaction.response.send_message("Sniped message.", ephemeral=True)
 
         edited = new_message is not None
