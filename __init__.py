@@ -109,7 +109,7 @@ class BreadAssassin(ModuleCog):
     async def send_snipe_response(
         self, interaction: discord.Interaction, *sniped_message_dict: Tuple[discord.Message, discord.Message, datetime]
     ):
-        response_type: str = selfsettings.snipe_response_type.value.lower()
+        response_type: str = self.settings.snipe_response_type.value.lower()
         match response_type:
             case "embed":
                 await self.send_snipe_embed(interaction, *sniped_message_dict)
@@ -117,13 +117,13 @@ class BreadAssassin(ModuleCog):
                 await self.send_snipe_webhook(interaction, *sniped_message_dict)
 
     async def is_allowed_to_snipe(self, attempted_to_snipe: dict) -> bool:
-        if attempted_to_snipe["new_message"] is None and not selfsettings.allow_deletion_sniping.value:
+        if attempted_to_snipe["new_message"] is None and not self.settings.allow_deletion_sniping.value:
             return False
-        if attempted_to_snipe["new_message"] is not None and not selfsettings.allow_edit_sniping.value:
+        if attempted_to_snipe["new_message"] is not None and not self.settings.allow_edit_sniping.value:
             return False
 
         now = datetime.now()
-        time_tolerance = timedelta(seconds=selfsettings.max_age.value)
+        time_tolerance = timedelta(seconds=self.settings.max_age.value)
         return attempted_to_snipe["changed_at"] + time_tolerance >= now
 
     @app_commands.command(description='"Snipe" a message that was recently edited or deleted')
@@ -140,7 +140,7 @@ class BreadAssassin(ModuleCog):
 
     @ModuleCog.listener()
     async def on_message_delete(self, message: discord.Message):
-        if not selfsettings.allow_deletion_sniping.value:
+        if not self.settings.allow_deletion_sniping.value:
             return
         self.message_cache[message.guild.id][message.channel.id] = {
             "old_message": message,
@@ -150,7 +150,7 @@ class BreadAssassin(ModuleCog):
 
     @ModuleCog.listener()
     async def on_message_edit(self, old_message: discord.Message, new_message: discord.Message):
-        if not selfsettings.allow_edit_sniping.value:
+        if not self.settings.allow_edit_sniping.value:
             return
         self.message_cache[old_message.guild.id][old_message.channel.id] = {
             "old_message": old_message,
@@ -161,7 +161,7 @@ class BreadAssassin(ModuleCog):
     @tasks.loop(seconds=1.0)
     async def cache_cleanup(self) -> None:
         now = datetime.now()
-        time_tolerance = timedelta(seconds=selfsettings.max_age.value)
+        time_tolerance = timedelta(seconds=self.settings.max_age.value)
         for guild, channels in dict(self.message_cache).items():
             # Cast to a dict in order to avoid modifying the object we're iterating over
             # This instead creates a copy of the object before iterating
