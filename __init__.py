@@ -17,6 +17,7 @@ class DeleteMessageButton(discord.ui.View):
         self.sniped_user = sniped_user
         self.should_delete_message = False
 
+    # noinspection PyUnusedLocal
     @discord.ui.button(label="Delete this message (author only)", style=discord.ButtonStyle.red, emoji="🚮")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -55,12 +56,12 @@ class BreadAssassin(ModuleCog):
             content += f"in reply to {old_message.reference.cached_message.author.mention}"
             embeds.append(discord.Embed(title="Replying to:", description=reply.content))
 
-        embeds.extend(old_message.embeds[: 10 - len(embeds)])
+        embeds.extend(old_message.embeds)
         button = DeleteMessageButton(old_message.author)
         await interaction.response.send_message(
             content,
             files=[await attachment.to_file() for attachment in old_message.attachments],
-            embeds=embeds,
+            embeds=embeds[:10],
             view=button,
         )
         await button.wait()
@@ -90,14 +91,32 @@ class BreadAssassin(ModuleCog):
             snipe_webhook = await interaction.channel.create_webhook(name="Snipe")
         await interaction.response.send_message("Sniped message.", ephemeral=True)
 
+        embeds: list[discord.Embed] = []
+        if old_message.reference and (reply := old_message.reference.cached_message):
+            embeds.append(
+                discord.Embed(
+                    title="Replying to:",
+                    description=reply.content,
+                    timestamp=reply.created_at,
+                    color=reply.author.color,
+                ).set_author(name=reply.author.display_name, icon_url=reply.author.avatar.url)
+            )
+        embeds.extend(old_message.embeds)
+
+        files = [
+            await sticker.to_file() for sticker in old_message.stickers
+        ].extend([
+            await attachment.to_file() for attachment in old_message.attachments
+        ])
+
         edited = new_message is not None
         button = DeleteMessageButton(old_message.author)
         sent_message = await snipe_webhook.send(
             allowed_mentions=discord.AllowedMentions.none(),
             avatar_url=old_message.author.avatar.url,
-            content=old_message.content,
-            embeds=old_message.embeds,
-            files=[await attachment.to_file() for attachment in old_message.attachments],
+            content=old_message.content if len(old_message.content) < 2000 else f"{old_message.content[:2000-3]}...",
+            embeds=old_message.embeds[:10],
+            files=files[:10],
             username=f"{old_message.author.display_name} (sniped {'edited' if edited else 'deleted'} message)",
             view=button,
             wait=True,
