@@ -87,7 +87,6 @@ class BreadAssassin(ModuleCog):
             # Fallback to an embed
             return await self.send_snipe_embed(interaction, old_message, new_message, changed_at)
 
-        print(snipe_webhook)
         if not snipe_webhook or not snipe_webhook.token:
             snipe_webhook = await interaction.channel.create_webhook(name="Snipe")
 
