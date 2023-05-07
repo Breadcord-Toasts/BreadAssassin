@@ -87,9 +87,9 @@ class BreadAssassin(ModuleCog):
             # Fallback to an embed
             return await self.send_snipe_embed(interaction, old_message, new_message, changed_at)
 
-        if not snipe_webhook:
+        print(snipe_webhook)
+        if not snipe_webhook or not snipe_webhook.token:
             snipe_webhook = await interaction.channel.create_webhook(name="Snipe")
-        await interaction.response.send_message("Sniped message.", ephemeral=True)
 
         embeds: list[discord.Embed] = []
         if old_message.reference and (reply := old_message.reference.cached_message):
@@ -116,11 +116,13 @@ class BreadAssassin(ModuleCog):
             avatar_url=old_message.author.avatar.url,
             content=old_message.content if len(old_message.content) < 2000 else f"{old_message.content[:2000-3]}...",
             embeds=old_message.embeds[:10],
-            files=files[:10],
-            username=f"{old_message.author.display_name} (sniped {'edited' if edited else 'deleted'} message)",
+            files=files[:10] if files is not None else [],
+            username=f"{old_message.author.display_name} ({'edited' if edited else 'deleted'} message)",
             view=button,
             wait=True,
         )
+        await interaction.response.send_message("Sniped message.", ephemeral=True)
+
         await button.wait()
         if button.should_delete_message:
             await sent_message.delete()
@@ -136,9 +138,14 @@ class BreadAssassin(ModuleCog):
                 await self.send_snipe_webhook(interaction, *sniped_message_dict)
 
     async def is_allowed_to_snipe(self, attempted_to_snipe: dict) -> bool:
-        if attempted_to_snipe["new_message"] is None and not self.settings.allow_deletion_sniping.value:
+        new_message: discord.Message = attempted_to_snipe["new_message"]
+        old_message: discord.Message = attempted_to_snipe["old_message"]
+
+        if new_message is None and not self.settings.allow_deletion_sniping.value:
             return False
-        if attempted_to_snipe["new_message"] is not None and not self.settings.allow_edit_sniping.value:
+        if new_message is not None and not self.settings.allow_edit_sniping.value:
+            return False
+        if old_message.webhook_id:
             return False
 
         now = datetime.now()
