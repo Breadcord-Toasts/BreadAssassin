@@ -12,18 +12,19 @@ from breadcord.module import ModuleCog
 
 
 class DeleteMessageButton(discord.ui.View):
-    def __init__(self, sniped_user: discord.User | discord.Member):
+    def __init__(self, *, sniped_user_id: int, sniper_user_id: int):
         super().__init__()
-        self.sniped_user = sniped_user
+        self.accepted_users = (sniped_user_id, sniper_user_id)
         self.should_delete_message = False
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label="Delete this message (author only)", style=discord.ButtonStyle.red, emoji="🚮")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        if interaction.user != self.sniped_user:
+        if interaction.user.id not in self.accepted_users:
+            await interaction.response.send_message('You are not allowed to perform this action!', ephemeral=True)
             return
 
+        await interaction.response.defer()
         self.should_delete_message = True
         self.stop()
 
@@ -57,7 +58,7 @@ class BreadAssassin(ModuleCog):
             embeds.append(discord.Embed(title="Replying to:", description=reply.content))
 
         embeds.extend(old_message.embeds)
-        button = DeleteMessageButton(old_message.author)
+        button = DeleteMessageButton(sniped_user_id=old_message.author.id, sniper_user_id=interaction.user.id)
         await interaction.response.send_message(
             content,
             files=[await attachment.to_file() for attachment in old_message.attachments],
@@ -109,7 +110,7 @@ class BreadAssassin(ModuleCog):
         ])
 
         edited = new_message is not None
-        button = DeleteMessageButton(old_message.author)
+        button = DeleteMessageButton(sniped_user_id=old_message.author.id, sniper_user_id=interaction.user.id)
         sent_message = await snipe_webhook.send(
             allowed_mentions=discord.AllowedMentions.none(),
             avatar_url=old_message.author.avatar.url,
