@@ -4,8 +4,7 @@ from datetime import datetime, timedelta
 from typing import Tuple
 
 import discord
-from discord import app_commands
-from discord.ext import tasks
+from discord.ext import tasks, commands
 
 import breadcord
 from breadcord.module import ModuleCog
@@ -37,7 +36,7 @@ class BreadAssassin(ModuleCog):
 
     @staticmethod
     async def send_snipe_embed(
-        interaction: discord.Interaction,
+        ctx: commands.Context,
         old_message: discord.Message,
         new_message: discord.Message | None,
         changed_at: datetime,
@@ -58,8 +57,8 @@ class BreadAssassin(ModuleCog):
             embeds.append(discord.Embed(title="Replying to:", description=reply.content))
 
         embeds.extend(old_message.embeds)
-        button = DeleteMessageButton(sniped_user_id=old_message.author.id, sniper_user_id=interaction.user.id)
-        await interaction.response.send_message(
+        button = DeleteMessageButton(sniped_user_id=old_message.author.id, sniper_user_id=ctx.author.id)
+        sent_message = await ctx.reply(
             content,
             files=[await attachment.to_file() for attachment in old_message.attachments],
             embeds=embeds[:10],
@@ -67,29 +66,29 @@ class BreadAssassin(ModuleCog):
         )
         await button.wait()
         if button.should_delete_message:
-            await interaction.delete_original_response()
+            await sent_message.delete()
 
     async def send_snipe_webhook(
         self,
-        interaction: discord.Interaction,
+        ctx: commands.Context,
         old_message: discord.Message,
         new_message: discord.Message | None,
         changed_at: datetime,
     ) -> None:
         try:
             snipe_webhook: discord.Webhook | None = discord.utils.find(
-                lambda w: w.name == "Snipe", await interaction.channel.webhooks()
+                lambda w: w.name == "Snipe", await ctx.channel.webhooks()
             )
         except discord.Forbidden:
             self.logger.warn(
                 f"Bot doesn't have permissions to manage webhooks in the "
-                f"{interaction.channel.name} channel within the {interaction.guild.name} guild."
+                f"{ctx.channel.name} channel within the {ctx.guild.name} guild."
             )
             # Fallback to an embed
-            return await self.send_snipe_embed(interaction, old_message, new_message, changed_at)
+            return await self.send_snipe_embed(ctx, old_message, new_message, changed_at)
 
         if not snipe_webhook or not snipe_webhook.token:
-            snipe_webhook = await interaction.channel.create_webhook(name="Snipe")
+            snipe_webhook = await ctx.channel.create_webhook(name="Snipe")
 
         embeds: list[discord.Embed] = []
         if old_message.reference and (reply := old_message.reference.cached_message):
@@ -110,7 +109,7 @@ class BreadAssassin(ModuleCog):
         ])
 
         edited = new_message is not None
-        button = DeleteMessageButton(sniped_user_id=old_message.author.id, sniper_user_id=interaction.user.id)
+        button = DeleteMessageButton(sniped_user_id=old_message.author.id, sniper_user_id=ctx.author.id)
         sent_message = await snipe_webhook.send(
             allowed_mentions=discord.AllowedMentions.none(),
             avatar_url=old_message.author.avatar.url,
@@ -121,21 +120,21 @@ class BreadAssassin(ModuleCog):
             view=button,
             wait=True,
         )
-        await interaction.response.send_message("Sniped message.", ephemeral=True)
+        await ctx.reply("Sniped message.", ephemeral=True)
 
         await button.wait()
         if button.should_delete_message:
             await sent_message.delete()
 
     async def send_snipe_response(
-        self, interaction: discord.Interaction, *sniped_message_dict: Tuple[discord.Message, discord.Message, datetime]
+        self, ctx: commands.Context, *sniped_message_dict: Tuple[discord.Message, discord.Message, datetime]
     ):
         response_type: str = self.settings.snipe_response_type.value.lower()
         match response_type:
             case "embed":
-                await self.send_snipe_embed(interaction, *sniped_message_dict)
+                await self.send_snipe_embed(ctx, *sniped_message_dict)
             case "webhook":
-                await self.send_snipe_webhook(interaction, *sniped_message_dict)
+                await self.send_snipe_webhook(ctx, *sniped_message_dict)
 
     async def is_allowed_to_snipe(self, attempted_to_snipe: dict) -> bool:
         new_message: discord.Message = attempted_to_snipe["new_message"]
@@ -152,17 +151,17 @@ class BreadAssassin(ModuleCog):
         time_tolerance = timedelta(seconds=self.settings.max_age.value)
         return attempted_to_snipe["changed_at"] + time_tolerance >= now
 
-    @app_commands.command(description='"Snipe" a message that was recently edited or deleted')
-    async def snipe(self, interaction: discord.Interaction):
+    @commands.hybrid_command(description='"Snipe" a message that was recently edited or deleted')
+    async def snipe(self, ctx: commands.Context):
         try:
-            sniped_message_dict: dict = self.message_cache[interaction.guild_id][interaction.channel_id]
+            sniped_message_dict: dict = self.message_cache[ctx.guild.id][ctx.channel.id]
             assert await self.is_allowed_to_snipe(sniped_message_dict)
         except (KeyError, AssertionError):
-            return await interaction.response.send_message("There is no message to snipe.", ephemeral=True)
+            return await ctx.reply("There is no message to snipe.", ephemeral=True)
         # Lowers the chance of double sniping occurring
-        del self.message_cache[interaction.guild_id][interaction.channel_id]
+        del self.message_cache[ctx.guild.id][ctx.channel.id]
 
-        await self.send_snipe_response(interaction, *sniped_message_dict.values())
+        await self.send_snipe_response(ctx, *sniped_message_dict.values())
 
     @ModuleCog.listener()
     async def on_message_delete(self, message: discord.Message):
