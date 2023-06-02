@@ -120,7 +120,8 @@ class BreadAssassin(ModuleCog):
             view=button,
             wait=True,
         )
-        await ctx.reply("Sniped message.", ephemeral=True)
+        if ctx.interaction:
+            await ctx.reply("Sniped message.", ephemeral=True)
 
         await button.wait()
         if button.should_delete_message:
