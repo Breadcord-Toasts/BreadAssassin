@@ -1,3 +1,4 @@
+import contextlib
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -168,21 +169,23 @@ class BreadAssassin(ModuleCog):
     async def on_message_delete(self, message: discord.Message):
         if not self.settings.allow_deletion_sniping.value:
             return
-        self.message_cache[message.guild.id][message.channel.id] = {
-            "old_message": message,
-            "new_message": None,
-            "changed_at": datetime.now(),
-        }
+        with contextlib.suppress(KeyError):  # ¯\_(ツ)_/¯
+            self.message_cache[message.guild.id][message.channel.id] = {
+                "old_message": message,
+                "new_message": None,
+                "changed_at": datetime.now(),
+            }
 
     @ModuleCog.listener()
     async def on_message_edit(self, old_message: discord.Message, new_message: discord.Message):
         if not self.settings.allow_edit_sniping.value:
             return
-        self.message_cache[old_message.guild.id][old_message.channel.id] = {
-            "old_message": old_message,
-            "new_message": new_message,
-            "changed_at": datetime.now(),
-        }
+        with contextlib.suppress(KeyError):  # ¯\_(ツ)_/¯
+            self.message_cache[old_message.guild.id][old_message.channel.id] = {
+                "old_message": old_message,
+                "new_message": new_message,
+                "changed_at": datetime.now(),
+            }
 
     @tasks.loop(seconds=1.0)
     async def cache_cleanup(self) -> None:
