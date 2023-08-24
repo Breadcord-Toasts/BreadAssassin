@@ -1,4 +1,4 @@
-# The maximum ammount of time (in seconds) that can has passed for a message to be snipeable
+# After how many seconds a message should no longer be snipable
 max_age = 30
 
 # Allow the original message author to delete the snipe of their message
