@@ -1,3 +1,4 @@
+import contextlib
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -87,9 +88,12 @@ class BreadAssassin(ModuleCog):
                 response_handler = embed_response_handler
             case "webhook":
                 response_handler = webhook_response_handler
+            case _:
+                raise ValueError(f"Invalid snipe response type: {self.settings.snipe_response_type.value}")
 
         await response_handler(ctx, message_states=sniped_message_sates)
-        self.message_cache.pop(discord.Object(sniped_message_sates[-1].message.id))
+        with contextlib.suppress(KeyError):
+            self.message_cache.pop(discord.Object(sniped_message_sates[-1].message.id))
 
 
 async def setup(bot: breadcord.Bot):
