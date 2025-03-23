@@ -1,5 +1,5 @@
 import time
-from collections.abc import Coroutine, Callable
+from collections.abc import Callable, Coroutine
 from typing import Any
 
 import discord
@@ -9,10 +9,10 @@ from .types import MessageState
 from .views import DeleteMessageButton
 
 __all__ = (
+    "ACCEPTED_WEBHOOK_NAME",
     "ResponseHandler",
     "embed_response_handler",
     "webhook_response_handler",
-    "ACCEPTED_WEBHOOK_NAME",
 )
 
 ACCEPTED_WEBHOOK_NAME = "breadcord_bread_assassin_snipe_hook"
@@ -31,7 +31,7 @@ def strip_with_dots(string: str, *, max_length: int) -> str:
 
 async def embed_response_handler(
     ctx: commands.Context,
-    message_states: list[MessageState]
+    message_states: list[MessageState],
 ) -> tuple[DeleteMessageButton, discord.Message]:
     # TODO: Allow sniping older versions of a message
     latest_state: MessageState = message_states[-1]
@@ -46,7 +46,7 @@ async def embed_response_handler(
             title="Message content",
             description=strip_with_dots(latest_state.message.content, max_length=2000),
             colour=latest_state.message.author.colour,
-        )
+        ),
     ]
     if latest_state.message.reference and (reply := latest_state.message.reference.cached_message):
         content += f"in reply to {reply.author.mention} "
@@ -61,7 +61,7 @@ async def embed_response_handler(
         content=content,
         embeds=embeds[:10],
         files=[await attachment.to_file() for attachment in latest_state.message.attachments],
-        view=button
+        view=button,
     )
 
     return button, response
@@ -69,7 +69,7 @@ async def embed_response_handler(
 
 async def webhook_response_handler(
     ctx: commands.Context,
-    message_states: list[MessageState]
+    message_states: list[MessageState],
 ) -> tuple[DeleteMessageButton, discord.Message]:
     # TODO: Allow sniping older versions of a message
     latest_state: MessageState = message_states[-1]
@@ -78,7 +78,7 @@ async def webhook_response_handler(
     try:
         snipe_webhook: discord.Webhook | None = discord.utils.find(
             lambda webhook: webhook.name == ACCEPTED_WEBHOOK_NAME,
-            await parent_channel.webhooks()
+            await parent_channel.webhooks(),
         )
         # We seemingly can't get the token after a while, so we just make a new webhook
         if not snipe_webhook or not snipe_webhook.token:
@@ -86,7 +86,7 @@ async def webhook_response_handler(
                 await snipe_webhook.delete(reason="Could not get webhook token")
             snipe_webhook = await parent_channel.create_webhook(
                 name=ACCEPTED_WEBHOOK_NAME,
-                reason="Webhook needed to spoof message author for sniping."
+                reason="Webhook needed to spoof message author for sniping.",
             )
     except discord.HTTPException as error:  # includes Forbidden
         # Fallback to an embed
@@ -129,5 +129,5 @@ def reply_embed(message: discord.Message) -> discord.Embed:
         color=message.author.color,
     )
     embed.set_author(name=message.author.display_name, icon_url=message.author.avatar.url)
-    embed.set_footer(text=f"Replied with ping" if message.mentions else "Replied without ping")
+    embed.set_footer(text="Replied with ping" if message.mentions else "Replied without ping")
     return embed

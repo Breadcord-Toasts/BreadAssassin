@@ -20,7 +20,7 @@ class MessageState:
         *,
         message: discord.Message,
         changed_through: ChangeType | None,
-        changed_at: datetime
+        changed_at: datetime,
     ):
         self.message = message
         self.changed_through = changed_through

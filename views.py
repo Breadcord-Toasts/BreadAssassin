@@ -11,7 +11,7 @@ class DeleteMessageButton(discord.ui.View):
     @discord.ui.button(label="Delete this message (author only)", style=discord.ButtonStyle.red, emoji="🚮")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id not in self.accepted_users:
-            await interaction.response.send_message('You are not allowed to perform this action!', ephemeral=True)
+            await interaction.response.send_message("You are not allowed to perform this action!", ephemeral=True)
             return
 
         await interaction.response.defer()

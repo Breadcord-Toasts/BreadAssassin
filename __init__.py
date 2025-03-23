@@ -3,13 +3,13 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum
 
-import discord
-from discord.ext import tasks, commands
-
 import breadcord
+import discord
 from breadcord.module import ModuleCog
-from .response_handlers import embed_response_handler, webhook_response_handler, ACCEPTED_WEBHOOK_NAME
-from .types import MessageState, ChangeType
+from discord.ext import commands, tasks
+
+from .response_handlers import ACCEPTED_WEBHOOK_NAME, embed_response_handler, webhook_response_handler
+from .types import ChangeType, MessageState
 from .views import DeleteMessageButton
 
 MessageID = int
@@ -26,11 +26,11 @@ class BreadAssassin(ModuleCog):
         self.message_cache: defaultdict[MessageID, list[MessageState]] = defaultdict(list)
         self.prune_message_cache.start()
 
-        @self.settings.snipe_response_type.observe  # type: ignore
+        @self.settings.snipe_response_type.observe
         def on_snipe_response_type_changed(_, new: str) -> None:
             if new.upper() not in ResponseType.__members__:
                 raise ValueError(f"Invalid snipe response type: {new}")
-        on_snipe_response_type_changed(None, self.settings.snipe_response_type.value)  # type: ignore
+        on_snipe_response_type_changed(None, self.settings.snipe_response_type.value)
 
     @property
     def snipe_response_type(self) -> ResponseType:
@@ -81,8 +81,8 @@ class BreadAssassin(ModuleCog):
             MessageState(
                 message=message,
                 changed_through=ChangeType.DELETE,
-                changed_at=datetime.now()
-            )
+                changed_at=datetime.now(),
+            ),
         )
         self.logger.debug(f"Message {message.id} deleted and tracked")
 
@@ -96,14 +96,14 @@ class BreadAssassin(ModuleCog):
             MessageState(
                 message=old_message,
                 changed_through=ChangeType.EDIT,
-                changed_at=datetime.now()
-            )
+                changed_at=datetime.now(),
+            ),
         )
         self.logger.debug(f"Message {old_message.id} edited and tracked")
 
     @commands.hybrid_command(
         aliases=["s"],
-        description='"Snipe" a message that was recently edited or deleted'
+        description='"Snipe" a message that was recently edited or deleted',
     )
     async def snipe(self, ctx: commands.Context, index: int = 1):
         if not self.settings.allow_edit_sniping.value and not self.settings.allow_deletion_sniping.value:
@@ -129,7 +129,7 @@ class BreadAssassin(ModuleCog):
     async def use_handler(
         self,
         ctx: commands.Context,
-        message_states: list[MessageState]
+        message_states: list[MessageState],
     ) -> tuple[DeleteMessageButton, discord.Message]:
         if self.snipe_response_type == ResponseType.EMBED:
             return await embed_response_handler(ctx, message_states)
